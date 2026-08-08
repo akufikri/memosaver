@@ -154,6 +154,8 @@ memosaver doctor
 
 ## Interactive visualization
 
+<img width="1636" height="1005" alt="image" src="https://github.com/user-attachments/assets/4d132138-0ed6-4164-aea9-0015c32a4a19" />
+
 Explore your memory graph in 3D from the browser:
 
 ```bash
