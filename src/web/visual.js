@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from '/vendor/OrbitControls.js';
+import { LineSegmentsGeometry } from '/vendor/lines/LineSegmentsGeometry.js';
+import { LineSegments2 } from '/vendor/lines/LineSegments2.js';
+import { LineMaterial } from '/vendor/lines/LineMaterial.js';
 
 const canvas = document.getElementById('canvas');
 const statsEl = document.getElementById('stats');
@@ -84,11 +87,9 @@ const targetStore = new Map(); // id -> final layout position
 const originStore = new Map();  // id -> entry (scaled-out) position
 let entranceT = 0;              // 0..1 animation progress
 
-function initPhysics() {
-  posStore.clear();
-  velStore.clear();
+// Compute deterministic hierarchical targets for the current graph
+function computeTargets() {
   targetStore.clear();
-  originStore.clear();
 
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const parentMap = new Map(); // child id -> parent id (first contains edge)
@@ -142,10 +143,10 @@ function initPhysics() {
   const leaves = nodes.filter((n) => n.kind === 'memory' || n.kind === 'checkpoint');
   for (const node of leaves) {
     const parentId = parentMap.get(node.id);
-    const center = posStore.has(parentId) ? posStore.get(parentId) : projectPos.get(parentId);
+    const parentPos = posStore.has(parentId) ? posStore.get(parentId) : projectPos.get(parentId);
     const siblings = (childMap.get(parentId) ?? []).filter((c) => nodeById.get(c)?.kind !== 'session');
     const idx = Math.max(siblings.indexOf(node.id), 0);
-    targetStore.set(node.id, placeRing(center ?? new THREE.Vector3(0, 0, 0), 34, Math.max(siblings.length, 1), idx, node.kind));
+    targetStore.set(node.id, placeRing(parentPos ?? new THREE.Vector3(0, 0, 0), 34, Math.max(siblings.length, 1), idx, node.kind));
   }
 
   // 4) anything left unplaced gets a spot near its default project
@@ -154,6 +155,14 @@ function initPhysics() {
     const center = projectPos.get(parentMap.get(node.id)) ?? new THREE.Vector3(0, 0, 0);
     targetStore.set(node.id, center.clone().add(new THREE.Vector3(Math.random() * 40 - 20, Math.random() * 20 - 10, Math.random() * 40 - 20)));
   }
+}
+
+function initPhysics() {
+  posStore.clear();
+  velStore.clear();
+  originStore.clear();
+
+  computeTargets();
 
   // entry positions: target shrunk toward the center -> expansion looks organized
   for (const node of nodes) {
@@ -179,6 +188,44 @@ function updateEntrance() {
   }
   syncMeshPositions();
   syncLinePositions();
+}
+
+// Incremental refresh: existing nodes keep their current positions, newly added
+// nodes animate in from the center, removed nodes disappear.
+function applyGraphUpdate(nextNodes, nextEdges) {
+  const oldIds = new Set(nodes.map((n) => n.id));
+  nodes = nextNodes;
+  edges = nextEdges;
+  const newIds = new Set(nodes.map((n) => n.id));
+
+  // drop state for removed nodes
+  for (const id of oldIds) {
+    if (!newIds.has(id)) {
+      posStore.delete(id);
+      velStore.delete(id);
+    }
+  }
+
+  computeTargets();
+
+  for (const node of nodes) {
+    const existing = oldIds.has(node.id) && posStore.has(node.id);
+    if (existing) {
+      // freeze in place: keep current position as both origin and target
+      const cur = posStore.get(node.id);
+      originStore.set(node.id, cur.clone());
+      targetStore.set(node.id, cur.clone());
+    } else {
+      const t = targetStore.get(node.id);
+      originStore.set(node.id, t.clone().multiplyScalar(0.04));
+      posStore.set(node.id, originStore.get(node.id).clone());
+      velStore.set(node.id, new THREE.Vector3());
+    }
+  }
+
+  entranceT = 0;
+  buildGraphObjects();
+  statsEl.innerHTML = `<b>${nodes.length}</b> nodes · <b>${edges.length}</b> edges`;
 }
 
 // ---------- build meshes & lines ----------
@@ -207,28 +254,31 @@ function buildGraphObjects() {
   }
   syncMeshPositions();
 
-  // edge lines: single LineSegments buffer (contains dim, similar hinted)
+  // edge lines: single LineSegments2 buffer with a width (so connections are visible)
   const points = [];
+  const colors = [];
   for (const edge of edges) {
     const a = posStore.get(edge.source);
     const b = posStore.get(edge.target);
     if (!a || !b || !isFinite(a.x) || !isFinite(b.x)) continue;
+    const c = edge.kind === 'similar' ? new THREE.Color(SIMILAR_COLOR) : new THREE.Color(0x59617a);
     points.push(a.x, a.y, a.z, b.x, b.y, b.z);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-  // segment colors
-  const colors = [];
-  for (const edge of edges) {
-    if (!posStore.get(edge.source) || !posStore.get(edge.target)) continue;
-    const c = edge.kind === 'similar' ? new THREE.Color(SIMILAR_COLOR) : new THREE.Color(0x3a4152);
     colors.push(c.r, c.g, c.b, c.r, c.g, c.b);
   }
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  lineStore = new THREE.LineSegments(
-    geo,
-    new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55 })
-  );
+  const edgeGeo = new LineSegmentsGeometry();
+  edgeGeo.setPositions(points);
+  edgeGeo.setColors(colors);
+  const edgeMat = new LineMaterial({
+    color: 0xffffff,
+    linewidth: 2.4,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    worldUnits: false,
+    resolution: new THREE.Vector2(window.innerWidth, window.innerHeight)
+  });
+  lineStore = new LineSegments2(edgeGeo, edgeMat);
+  lineStore.frustumCulled = false;
   scene.add(lineStore);
 }
 
@@ -253,17 +303,14 @@ function syncMeshPositions() {
 
 function syncLinePositions() {
   if (!lineStore) return;
-  const attr = lineStore.geometry.getAttribute('position');
-  let idx = 0;
+  const pts = [];
   for (const edge of edges) {
     const a = posStore.get(edge.source);
     const b = posStore.get(edge.target);
     if (!a || !b) continue;
-    attr.setXYZ(idx, a.x, a.y, a.z);
-    attr.setXYZ(idx + 1, b.x, b.y, b.z);
-    idx += 2;
+    pts.push(a.x, a.y, a.z, b.x, b.y, b.z);
   }
-  attr.needsUpdate = true;
+  lineStore.geometry.setPositions(pts);
 }
 
 // ---------- dragging via raycast ----------
@@ -326,6 +373,7 @@ renderer.domElement.addEventListener('pointermove', (e) => {
       velStore.get(draggingId).multiplyScalar(0);
       const mesh = meshByNode.get(draggingId);
       if (mesh) mesh.position.copy(target);
+      syncLinePositions();
     }
     return;
   }
@@ -405,6 +453,10 @@ window.addEventListener('resize', () => {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  if (lineStore?.material?.resolution) {
+    lineStore.material.resolution.set(w, h);
+    lineStore.material.needsUpdate = true;
+  }
 });
 
 // ---------- load ----------
@@ -456,6 +508,43 @@ async function loadGraph() {
 projectFilter.addEventListener('change', loadGraph);
 loadProjects();
 loadGraph();
+
+// ---------- live refresh ----------
+// Poll the graph periodically; when new memories/checkpoints appear, merge them
+// into the view without resetting existing node positions.
+async function pollGraph() {
+  if (draggingId) return; // don't fight an in-progress drag
+  const project = projectFilter.value;
+  const url = '/api/graph' + (project ? '?project=' + encodeURIComponent(project) : '');
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const freshSig = (project || '') + '|' + JSON.stringify({
+      n: data.nodes.length,
+      e: data.edges.length,
+      nodes: data.nodes.map((n) => n.id),
+      edges: data.edges.map((e) => `${e.source}:${e.target}:${e.kind}`)
+    });
+    const curSig = (project || '') + '|' + JSON.stringify({
+      n: nodes.length,
+      e: edges.length,
+      nodes: nodes.map((n) => n.id),
+      edges: edges.map((e) => `${e.source}:${e.target}:${e.kind}`)
+    });
+    if (freshSig !== curSig) {
+      applyGraphUpdate(data.nodes, data.edges);
+    }
+  } catch {
+    // transient fetch error -> just try again next tick
+  }
+}
+
+// Poll the graph after initial load lands.
+setInterval(() => {
+  if (!nodes.length && !edges.length) return; // still on first load
+  pollGraph();
+}, 4000);
+
 
 // ---------- animation loop ----------
 function animate() {

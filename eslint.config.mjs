@@ -22,6 +22,8 @@ export default tseslint.config(
         fetch: 'readonly',
         requestAnimationFrame: 'readonly',
         cancelAnimationFrame: 'readonly',
+        setInterval: 'readonly',
+        setTimeout: 'readonly',
         devicePixelRatio: 'readonly',
         HTMLElement: 'readonly',
         HTMLCanvasElement: 'readonly',

@@ -38,3 +38,14 @@ console.log('copied OrbitControls.js -> dist/web/vendor/OrbitControls.js');
 mkdirSync(resolve(vendorDir, 'controls'), { recursive: true });
 copyFileSync(orbitControls, resolve(vendorDir, 'controls', 'OrbitControls.js'));
 console.log('copied OrbitControls.js -> dist/web/vendor/controls/OrbitControls.js');
+
+// Line2 addons (for thicker, visible edge lines)
+const lineFiles = ['Line2.js', 'LineSegments2.js', 'LineGeometry.js', 'LineSegmentsGeometry.js', 'LineMaterial.js'];
+mkdirSync(resolve(vendorDir, 'lines'), { recursive: true });
+for (const f of lineFiles) {
+  copyFileSync(
+    resolve(__dirname, '..', 'node_modules', 'three', 'examples', 'jsm', 'lines', f),
+    resolve(vendorDir, 'lines', f)
+  );
+  console.log(`copied ${f} -> dist/web/vendor/lines/${f}`);
+}
