@@ -1,0 +1,69 @@
+{
+  "name": "memosaver",
+  "version": "0.1.0",
+  "description": "Local-first persistent memory and session continuity MCP server for AI agents",
+  "type": "module",
+  "license": "MIT",
+  "author": "Fikri Nurhakim",
+  "repository": {
+    "type": "git",
+    "url": "git+<your-repo-url>.git"
+  },
+  "homepage": "<your-repo-url>",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "bin": {
+    "memosaver": "./dist/cli/index.js",
+    "memosaver-mcp": "./dist/mcp/entry.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "client": "tsx src/mcp/client.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "acceptance": "node scripts/acceptance.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests --no-error-on-unmatched-pattern"
+  },
+  "keywords": [
+    "mcp",
+    "memory",
+    "ai-agent",
+    "sqlite",
+    "session",
+    "claude-code",
+    "opencode"
+  ],
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.8.0",
+    "commander": "^12.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "@types/node": "^22.5.0",
+    "eslint": "^9.9.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.3.0",
+    "vitest": "^2.0.5"
+  }
+}

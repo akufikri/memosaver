@@ -1,0 +1,35 @@
+# Dependencies & build
+node_modules/
+dist/
+
+# Local memosaver data (never commit personal memories)
+.memosaver/
+~/.memosaver/
+*.memosaver.sqlite
+.memosaver-test/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Test & coverage
+coverage/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Ideas / internal planning (keep out of public repo)
+docs/
+IMPLEMENTATION_PLAN.md
+IMPLEMENTATION_STATUS.md
