@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemoSaver — Memory Network</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three.module.js",
+    "three/addons/": "/vendor/"
+  }
+}
+</script>
+<style>
+  :root {
+    --bg: radial-gradient(1200px 800px at 50% -10%, #1a2030 0%, #0d1017 55%, #070910 100%);
+    --panel: rgba(18, 22, 32, 0.72);
+    --panel-solid: #121620;
+    --border: rgba(255,255,255,0.09);
+    --text: #eef1f8;
+    --muted: #8a93ab;
+    --project: #6c8cff;
+    --session: #3ddc97;
+    --memory: #ffb648;
+    --checkpoint: #c77dff;
+    --similar: #5b8dff;
+    --glow: rgba(108, 140, 255, 0.35);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+    overflow: hidden;
+  }
+  #canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+  #canvas:active { cursor: grabbing; }
+
+  /* header — glass bar */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; gap: 18px;
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  header .logo { display: flex; align-items: center; gap: 10px; }
+  header .logo .mark {
+    width: 26px; height: 26px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--project), var(--checkpoint));
+    box-shadow: 0 0 18px var(--glow);
+    display: grid; place-items: center; font-size: 14px; font-weight: 700; color: #0b0e16;
+  }
+  header h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.4px; }
+  header h1 .dim { color: var(--muted); font-weight: 400; }
+  .legend { display: flex; gap: 14px; font-size: 11px; align-items: center; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px currentColor; }
+  .spacer { flex: 1; }
+  .project-select { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .project-select label { color: var(--muted); }
+  .project-select select {
+    background: var(--panel-solid); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 10px; font-size: 12px; font-family: inherit;
+    outline: none; cursor: pointer;
+  }
+  .project-select select:focus { border-color: var(--project); box-shadow: 0 0 0 3px var(--glow); }
+  .stats {
+    font-size: 12px; color: var(--muted);
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 5px 12px; border-radius: 8px; white-space: nowrap;
+  }
+  .stats b { color: var(--text); font-weight: 600; }
+
+  /* ---------- floating panel ---------- */
+  .panel {
+    position: fixed; left: 20px; bottom: 20px; z-index: 10;
+    width: 260px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 16px;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.5);
+  }
+  .panel h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+  .panel .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .panel .row:last-child { margin-bottom: 0; }
+  .panel .row .dot { width: 10px; height: 10px; }
+  .panel .row span { font-size: 12px; color: var(--text); }
+  .panel .row small { color: var(--muted); font-size: 11px; }
+
+  /* ---------- controls ---------- */
+  .controls {
+    position: fixed; right: 20px; bottom: 20px; z-index: 10;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .controls button {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px; font-size: 12px; font-family: inherit;
+    cursor: pointer; transition: all .15s; backdrop-filter: blur(8px);
+  }
+  .controls button:hover { border-color: var(--project); box-shadow: 0 0 0 3px var(--glow); transform: translateY(-1px); }
+
+  /* ---------- tooltip ---------- */
+  .tooltip {
+    position: fixed; pointer-events: none; opacity: 0; transition: opacity .15s;
+    background: var(--panel-solid);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 14px; font-size: 12px; z-index: 20;
+    max-width: 340px; box-shadow: 0 14px 44px rgba(0,0,0,0.55);
+    backdrop-filter: blur(12px);
+  }
+  .tooltip.visible { opacity: 1; }
+  .tooltip .kind {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+    opacity: 0.6; margin-bottom: 4px;
+  }
+  .tooltip .body { line-height: 1.5; }
+  .tooltip .meta { color: var(--muted); font-size: 11px; margin-top: 4px; white-space: nowrap; }
+
+  /* hint */
+  .hint {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    z-index: 5; font-size: 11px; color: var(--muted); opacity: 0.7;
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 5px 12px; border-radius: 999px; backdrop-filter: blur(8px);
+  }
+
+  /* loading overlay */
+  #loading {
+    position: fixed; inset: 0; z-index: 40;
+    display: grid; place-items: center;
+    background: rgba(10,12,18,0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-family: system-ui; color: var(--text);
+    transition: opacity .3s ease;
+  }
+  #loading.hidden { opacity: 0; pointer-events: none; }
+  #loading .box { text-align: center; }
+  #loading .spinner {
+    width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.12);
+    border-top-color: var(--project);
+    animation: spin 0.9s linear infinite;
+    box-shadow: 0 0 24px var(--glow);
+  }
+  #loading p { font-size: 13px; color: var(--muted); letter-spacing: 0.4px; }
+  #loading b { color: var(--text); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- mobile / small screens ---------- */
+  @media (max-width: 768px) {
+    header { flex-wrap: wrap; gap: 8px 12px; padding: 10px 14px; }
+    header .legend { display: none; }              /* compact: legend lives in panel */
+    header h1 { font-size: 13px; }
+    .project-select { order: 3; width: 100%; }
+    .project-select select { flex: 1; max-width: none; }
+    .stats { font-size: 11px; padding: 4px 10px; }
+
+    .panel {
+      left: 12px; bottom: 12px; width: auto; max-width: 46vw;
+      padding: 12px; border-radius: 12px;
+    }
+    .panel h2 { margin-bottom: 8px; }
+    .panel .row small { display: none; }
+    .panel .row { margin-bottom: 6px; }
+
+    .controls { right: 12px; bottom: 12px; gap: 6px; }
+    .controls button { padding: 7px 10px; font-size: 11px; }
+
+    .tooltip { max-width: 70vw; font-size: 11px; padding: 8px 10px; }
+    .hint { bottom: 16px; font-size: 10px; padding: 4px 10px; white-space: nowrap; }
+  }
+
+  @media (max-width: 420px) {
+    .panel { max-width: 52vw; }
+    .stats { white-space: normal; }
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div id="loading">
+  <div class="box">
+    <div class="spinner"></div>
+    <p><b>Load network…</b></p>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="mark">M</div>
+    <h1>MemoSaver <span class="dim">· Memory Network</span></h1>
+  </div>
+  <div class="legend">
+    <span><i class="dot" style="color:var(--project)"></i>Project</span>
+    <span><i class="dot" style="color:var(--session)"></i>Session</span>
+    <span><i class="dot" style="color:var(--memory)"></i>Memory</span>
+    <span><i class="dot" style="color:var(--checkpoint)"></i>Checkpoint</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="project-select">
+    <label for="project-filter">Project</label>
+    <select id="project-filter"><option value="">All projects</option></select>
+  </div>
+  <div class="stats" id="stats">loading…</div>
+</header>
+
+<div class="panel">
+  <h2>Legend</h2>
+  <div class="row"><i class="dot" style="color:var(--project)"></i><span>Project</span><small>root of each network</small></div>
+  <div class="row"><i class="dot" style="color:var(--session)"></i><span>Session</span><small>agent working session</small></div>
+  <div class="row"><i class="dot" style="color:var(--memory)"></i><span>Memory</span><small>persisted knowledge</small></div>
+  <div class="row"><i class="dot" style="color:var(--checkpoint)"></i><span>Checkpoint</span><small>milestone snapshot</small></div>
+</div>
+
+<div class="controls">
+  <button id="reset">↺ Reset layout</button>
+  <button id="orbit">◉ Auto-orbit</button>
+  <button id="focus">⌖ Focus center</button>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="hint">drag nodes · scroll to zoom · right-drag to rotate · click to inspect</div>
+
+<script type="module" src="/visual.js"></script>
+</body>
+</html>

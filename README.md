@@ -36,6 +36,7 @@ AI agents forget everything the moment a session ends. You end up re-explaining 
 | 🧰 Checkpoints | manual + automatic; token-budgeted resume context (~2–5k tokens) |
 | 🤖 Agent-agnostic | Claude Code, OpenCode, cursor, and any MCP-capable agent |
 | 🔒 Local-first | zero cloud, zero network, zero native deps — your data is yours |
+| 🖼 3D visualization | interactive WebGL memory network (`memosaver visual`) |
 | 🛡 Graceful failure | MemoSaver enhances; it never blocks or crashes the agent |
 
 ## Requirements
@@ -150,6 +151,21 @@ memosaver memory import memories.json
 # diagnostics
 memosaver doctor
 ```
+
+## Interactive visualization
+
+Explore your memory graph in 3D from the browser:
+
+```bash
+memosaver visual               # serves on http://127.0.0.1:8888/visual
+memosaver visual --port 9000   # custom port
+memosaver visual --no-open     # don't auto-open the browser
+```
+
+- **3D network view** — projects at the center, sessions in rings around them, memories & checkpoints orbiting their session. All rendered with WebGL (three.js), no backend chat required.
+- **Group by project** — pick a project from the header to focus only that network.
+- **Interactive** — drag any node, orbit / zoom / pan, hover for tooltips, auto-orbit toggle.
+- **Graceful fallback** — if WebGL is unavailable the UI shows a clear message instead of a blank screen.
 
 ## Configuration
 

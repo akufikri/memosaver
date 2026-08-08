@@ -10,5 +10,24 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
       'no-console': 'off'
     }
+  },
+  {
+    files: ['src/web/**/*.js'],
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        devicePixelRatio: 'readonly',
+        HTMLElement: 'readonly',
+        HTMLCanvasElement: 'readonly',
+        PointerEvent: 'readonly',
+        WheelEvent: 'readonly'
+      }
+    }
   }
 );

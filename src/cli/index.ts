@@ -7,6 +7,7 @@ import { registerMemoryCommands } from './commands/memory.js';
 import { registerProjectCommands } from './commands/project.js';
 import { registerSessionCommands } from './commands/session.js';
 import { registerStatusCommand } from './commands/status.js';
+import { registerVisualCommand } from './commands/visual.js';
 import { startMcpServer } from '../mcp/server.js';
 
 let _app: AppCore | null = null;
@@ -28,6 +29,7 @@ export function run(): void {
   registerMemoryCommands(program, getApp);
   registerDoctorCommand(program);
   registerInstallCommand(program);
+  registerVisualCommand(program);
 
   program
     .command('mcp')
