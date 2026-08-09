@@ -40,7 +40,8 @@ export function createApp(): AppCore {
   const engine = new MemoryEngine(memoryRepo, {
     minImportance: config.memory.min_importance,
     maxContentLength: config.memory.max_content_length,
-    bufferSize: config.memory.buffer_size
+    bufferSize: config.memory.buffer_size,
+    debounceMs: config.memory.debounce_ms
   }, composeExtractor(ruleBased, config.memory.llm));
 
   const service = new MemoSaverService(db, engine, config, logger);

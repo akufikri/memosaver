@@ -20,6 +20,7 @@ export interface EngineConfig {
   minImportance: number;
   maxContentLength: number;
   bufferSize: number;
+  debounceMs: number;
 }
 
 const VALID_TYPES = new Set<MemoryType>([
@@ -38,6 +39,7 @@ const VALID_TYPES = new Set<MemoryType>([
 export class MemoryEngine {
   private readonly extractor: MemoryExtractor;
   private readonly buffer = new Map<string, EventActivity[]>();
+  private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor(
     private readonly repository: MemoryRepository,
@@ -107,6 +109,34 @@ export class MemoryEngine {
     const queue = this.buffer.get(projectId) ?? [];
     queue.push(event);
     this.buffer.set(projectId, queue);
+
+    // force flush when buffer full
+    if (queue.length >= this.config.bufferSize) {
+      this.cancelDebounce(projectId);
+      this.flushBuffer(projectId).catch(() => {});
+      return;
+    }
+
+    // reset idle debounce timer
+    if (this.config.debounceMs > 0) {
+      this.cancelDebounce(projectId);
+      const timer = setTimeout(() => {
+        this.debounceTimers.delete(projectId);
+        this.flushBuffer(projectId).catch(() => {});
+      }, this.config.debounceMs);
+      this.debounceTimers.set(projectId, timer);
+    }
+  }
+
+  private cancelDebounce(projectId: string): void {
+    const t = this.debounceTimers.get(projectId);
+    if (t !== undefined) { clearTimeout(t); this.debounceTimers.delete(projectId); }
+  }
+
+  /** Flush all project buffers — call before process exit. */
+  async flushAll(): Promise<void> {
+    const ids = [...this.buffer.keys()];
+    await Promise.all(ids.map((id) => this.flushBuffer(id)));
   }
 
   /** Number of buffered events for a project. */

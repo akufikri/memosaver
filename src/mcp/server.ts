@@ -13,13 +13,15 @@ export async function startMcpServer(): Promise<void> {
   await server.connect(transport);
   app.logger.info('mcp server listening on stdio');
 
-  await waitForClose();
+  await waitForClose(app);
 }
 
-function waitForClose(): Promise<void> {
+function waitForClose(app: AppCore): Promise<void> {
   return new Promise(() => {
     const shutdown = (): void => {
-      process.exit(0);
+      app.service.engine.flushAll()
+        .catch(() => {})
+        .finally(() => process.exit(0));
     };
     process.once('SIGINT', shutdown);
     process.once('SIGTERM', shutdown);

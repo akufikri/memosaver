@@ -17,6 +17,12 @@ export const CLAUDE_INSTRUCTIONS = `
 
 ---
 
+## Communication style
+
+Respond terse. Drop filler words (just/really/basically), articles (a/an/the), pleasantries. Fragments OK. Technical terms exact. This reduces token usage without losing precision.
+
+---
+
 ## \u{1F9E0} MemoSaver MCP — Persistent Project Memory (WAJIB)
 
 MemoSaver adalah MCP server local-first untuk memory progress, keputusan, error/solusi, dan session continuity lintas session/lintas agent.
@@ -70,10 +76,17 @@ export function registerInstallCommand(program: Command): void {
     .command('install')
     .description('Register MemoSaver as an MCP server and wire agent instructions')
     .option('-s, --scope <scope>', 'claude-code scope: user (global) or local (project)', 'user')
-    .option('--no-claude', 'skip Claude Code registration')
+    .option('--no-claude', 'skip Claude Code CLI registration')
     .option('--no-opencode', 'skip OpenCode registration')
     .option('--no-instructions', 'skip injecting instructions into ~/.claude/CLAUDE.md')
-    .action((opts: { scope: string; claude: boolean; opencode: boolean; instructions: boolean }) => {
+    .option('--claude-desktop', 'register in Claude Desktop app')
+    .option('--antigravity', 'print MCP config snippet for Google Antigravity')
+    .option('--codex', 'print MCP config snippet for OpenAI Codex')
+    .option('--kilo', 'print MCP config snippet for Kilo.ai')
+    .action((opts: {
+      scope: string; claude: boolean; opencode: boolean; instructions: boolean;
+      claudeDesktop: boolean; antigravity: boolean; codex: boolean; kilo: boolean;
+    }) => {
       const entry = resolveMcpEntry();
       console.log(`MemoSaver MCP entry: ${entry}`);
       if (!existsSync(entry)) {
@@ -84,9 +97,13 @@ export function registerInstallCommand(program: Command): void {
 
       if (opts.claude) installClaudeCode(entry, opts.scope);
       if (opts.opencode) installOpenCode(entry);
+      if (opts.claudeDesktop) installClaudeDesktop(entry);
+      if (opts.antigravity) printMcpSnippet('Antigravity', entry);
+      if (opts.codex) printMcpSnippet('OpenAI Codex', entry);
+      if (opts.kilo) printMcpSnippet('Kilo.ai', entry);
       if (opts.instructions) installClaudeInstructions();
 
-      console.log('\nDone. Restart your agent (Claude Code / OpenCode) to pick up the new MCP server.');
+      console.log('\nDone. Restart your agent to pick up the new MCP server.');
       console.log('Verify with: memosaver doctor');
     });
 }
@@ -149,6 +166,47 @@ function installClaudeInstructions(): void {
   const result = ensureClaudeInstructions();
   if (result.added) console.log(`claude-code: injected MemoSaver usage instructions into ${result.path}`);
   else console.log(`claude-code: instructions already present in ${result.path}`);
+}
+
+function installClaudeDesktop(entry: string): void {
+  const platform = process.platform;
+  let configPath: string;
+  if (platform === 'win32') {
+    configPath = resolve(process.env['APPDATA'] ?? homedir(), 'Claude', 'claude_desktop_config.json');
+  } else if (platform === 'darwin') {
+    configPath = resolve(homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+  } else {
+    configPath = resolve(homedir(), '.config', 'Claude', 'claude_desktop_config.json');
+  }
+  let config: Record<string, unknown> = {};
+  if (existsSync(configPath)) {
+    try {
+      config = JSON.parse(readFileSync(configPath, 'utf8')) as Record<string, unknown>;
+    } catch (err) {
+      console.error(`ERROR: cannot parse ${configPath}: ${(err as Error).message}`);
+      process.exitCode = 1;
+      return;
+    }
+  }
+  const servers = (config.mcpServers as Record<string, unknown>) ?? {};
+  if (servers['memosaver']) {
+    console.log(`claude-desktop: memosaver already configured in ${configPath}.`);
+    return;
+  }
+  servers['memosaver'] = { command: 'node', args: [entry] };
+  config.mcpServers = servers;
+  mkdirSync(dirname(configPath), { recursive: true });
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  console.log(`claude-desktop: added memosaver to ${configPath}.`);
+  console.log('Restart Claude Desktop to pick up the new MCP server.');
+}
+
+function printMcpSnippet(toolName: string, entry: string): void {
+  console.log(`\n${toolName} — add this MCP config to your tool's settings:\n`);
+  console.log(JSON.stringify({
+    memosaver: { type: 'stdio', command: 'node', args: [entry] }
+  }, null, 2));
+  console.log(`\nFor tools expecting a different format, the server binary is:\n  node ${entry}`);
 }
 
 /** Strip JSONC comments and trailing commas while respecting string literals. */
