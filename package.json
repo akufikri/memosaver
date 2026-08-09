@@ -7,21 +7,15 @@
   "author": "Fikri Nurhakim",
   "repository": {
     "type": "git",
-    "url": "git+<your-repo-url>.git"
+    "url": "git+https://github.com/akufikri/memosaver.git"
   },
-  "homepage": "<your-repo-url>",
+  "homepage": "https://github.com/akufikri/memosaver#readme",
   "engines": {
     "node": ">=22.5.0"
   },
   "bin": {
     "memosaver": "./dist/cli/index.js",
     "memosaver-mcp": "./dist/mcp/entry.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
   },
   "files": [
     "dist",
@@ -30,6 +24,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-web-assets.mjs",
+    "prepublishOnly": "pnpm build && pnpm test",
     "dev": "tsx src/index.ts",
     "client": "tsx src/mcp/client.ts",
     "test": "vitest run",
