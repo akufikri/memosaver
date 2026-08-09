@@ -130,7 +130,7 @@ export class MemoSaverService {
     this.sessions.create(session);
     this.projects.setLastSession(project.id, session.id);
 
-    const resumeContext = resume ? this.buildResumeContext(project.id) : this.emptyResume(project);
+    const resumeContext = resume ? this.buildResumeContext(project.id, agent) : this.emptyResume(project);
     this.logger.info('session started', { session: session.id, project: project.id, agent });
     return { session, project, created_project: created, resume: resumeContext };
   }
@@ -204,7 +204,7 @@ export class MemoSaverService {
    * Build the resume context for a project using the latest session,
    * latest checkpoint and relevant memories.
    */
-  buildResumeContext(projectId: string): ResumeContext {
+  buildResumeContext(projectId: string, currentAgent?: string): ResumeContext {
     const project = this.projects.get(projectId);
     if (!project) throw new NotFoundError(`project not found: ${projectId}`);
 
@@ -217,7 +217,8 @@ export class MemoSaverService {
 
     return this.contextBuilder.build(project, latestSession, latestCheckpoint, memories, {
       maxTokens: this.configConfig.resume?.max_tokens ?? 4000,
-      maxMemories: this.configConfig.resume?.max_memories ?? 25
+      maxMemories: this.configConfig.resume?.max_memories ?? 25,
+      currentAgent
     });
   }
 

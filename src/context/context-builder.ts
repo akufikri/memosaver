@@ -3,6 +3,7 @@ import type { Checkpoint, Memory, Project, ResumeContext, ResumeSection, Session
 export interface ContextBuildOptions {
   maxTokens?: number;
   maxMemories?: number;
+  currentAgent?: string;
 }
 
 export function estimateTokens(text: string): number {
@@ -22,7 +23,7 @@ export class ContextBuilder {
 
     const sections: ResumeSection[] = [];
     sections.push(projectSection(project));
-    if (session) sections.push(sessionSection(session));
+    if (session) sections.push(sessionSection(session, options.currentAgent));
     if (checkpoint) sections.push(checkpointSection(checkpoint));
 
     const pending = memories.filter((m) => m.type === 'TASK');
@@ -79,18 +80,23 @@ function projectSection(project: Project): ResumeSection {
   };
 }
 
-function sessionSection(session: Session): ResumeSection {
+function sessionSection(session: Session, currentAgent?: string): ResumeSection {
+  const toolSwitch = currentAgent && currentAgent !== session.agent;
+  const title = toolSwitch
+    ? `LAST SESSION [${session.agent} → ${currentAgent}]`
+    : 'LAST SESSION';
   const lines = [
     `Session: ${session.id}`,
     `Agent: ${session.agent}`,
     `Started: ${new Date(session.started_at).toISOString()}`
   ];
   if (session.ended_at) lines.push(`Ended: ${new Date(session.ended_at).toISOString()}`);
+  if (toolSwitch) lines.push(`Continuing as: ${currentAgent}`);
   if (session.goal) lines.push(`Goal: ${session.goal}`);
   if (session.current_task) lines.push(`Current task: ${session.current_task}`);
   if (session.summary) lines.push(`Summary: ${session.summary}`);
   if (session.next_action) lines.push(`Next action: ${session.next_action}`);
-  return { title: 'CURRENT SESSION', body: lines.join('\n'), source: 'session' };
+  return { title, body: lines.join('\n'), source: 'session' };
 }
 
 function checkpointSection(checkpoint: Checkpoint): ResumeSection {
