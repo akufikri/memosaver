@@ -1,0 +1,62 @@
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Rebuild the Tailwind stylesheet
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm site:build
+
+      - name: Warn if the committed site/build.css is stale
+        run: |
+          # The freshly built file is what gets published, so a stale committed copy
+          # never breaks the deploy — it only means a local edit was not committed.
+          if ! git diff --quiet -- site/build.css; then
+            echo "::warning::site/build.css did not match site/styles.css — run 'pnpm site:build' and commit the result."
+            git --no-pager diff --stat -- site/build.css
+          fi
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

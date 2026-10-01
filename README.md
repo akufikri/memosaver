@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1942" height="809" alt="MemoSaver banner: an oil painting of a rider on a white horse at dusk, with the MemoSaver wordmark set in brass" src="assets/brand/memosaver-hero.webp" />
+<img width="1942" height="809" alt="MemoSaver banner: an oil painting of a rider on a white horse at dusk, with the MemoSaver wordmark set in brass" src="site/assets/brand/memosaver-hero.webp" />
 
 # MemoSaver
 
@@ -12,7 +12,7 @@
 > **Never start your AI session from zero.**
 
 <a href="assets/screenshots/workspace-overview.png">
-  <img width="1200" alt="MemoSaver workspace overview: every project in one Archify diagram" src="assets/screenshots/workspace-overview.png" />
+  <img width="1200" alt="MemoSaver workspace overview: every project in one Archify diagram" src="site/assets/screenshots/workspace-overview.png" />
 </a>
 
 <sub>`memosaver visual` — every project as an Archify architecture diagram, rendered from your local SQLite memory.</sub>
@@ -196,16 +196,35 @@ The page is a self-contained [Archify](https://github.com/tt-a1i/archify) archit
 
 Workspace overview — one node per project, agent and session status in the node tag:
 
-![MemoSaver workspace overview](assets/screenshots/workspace-overview.png)
+![MemoSaver workspace overview](site/assets/screenshots/workspace-overview.png)
 
 Project detail — agent, sessions, the latest checkpoint and one node per memory type, with the
 capture relationships drawn between them:
 
-![MemoSaver project memory graph](assets/screenshots/project-detail.png)
+![MemoSaver project memory graph](site/assets/screenshots/project-detail.png)
 
 Project index — every project with its memory count and a link to its own diagram:
 
-![MemoSaver project index](assets/screenshots/project-index.png)
+![MemoSaver project index](site/assets/screenshots/project-index.png)
+
+## Static site
+
+`site/` is a standalone landing page — plain HTML, one Tailwind-built stylesheet and a small
+script. No framework, no runtime build:
+
+```bash
+pnpm site:build                 # tailwind -> site/build.css (committed, so Pages needs no build)
+python3 -m http.server -d site  # preview at http://localhost:8000
+```
+
+Published to GitHub Pages on every push that touches `site/`:
+<https://akufikri.github.io/memosaver/> — the workflow is
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml). It rebuilds Tailwind in CI before
+publishing, so the deployed stylesheet always matches `site/styles.css`; if the committed
+`site/build.css` is stale it says so with a warning instead of blocking the deploy.
+
+Everything is relative to `site/`, so the same directory works from the Pages root, a local
+server, or `file://`. Brand art and screenshots live in `site/assets/`.
 
 ## Configuration
 
@@ -260,9 +279,11 @@ memosaver status     # quick counts
 pnpm install
 pnpm typecheck
 pnpm lint
-pnpm test          # unit + integration + E2E (64 tests)
+pnpm test          # unit + integration + E2E (75 tests)
 pnpm acceptance    # real stdio MCP resume check end-to-end
-pnpm build
+pnpm build         # tsc -> dist, plus the vendored Archify renderer
+pnpm site:build    # Tailwind -> site/build.css (static landing page)
+pnpm site:watch    # rebuild site/build.css on change
 ```
 
 Working on the code? See [`docs/development.md`](docs/development.md).
