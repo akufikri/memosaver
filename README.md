@@ -1,7 +1,6 @@
 <div align="center">
 <img width="1942" height="809" alt="ChatGPT Image Aug 9, 2026, 12_03_41 AM" src="https://github.com/user-attachments/assets/e9349954-feea-4283-9567-5b7ebfad35b7" />
 
-
 # MemoSaver
 
 **Local-first, persistent memory & session continuity for AI coding agents.**
@@ -11,6 +10,12 @@
 [![MCP](https://img.shields.io/badge/MCP-server-7f5af0)](https://modelcontextprotocol.io)
 
 > **Never start your AI session from zero.**
+
+<a href="assets/screenshots/workspace-overview.png">
+  <img width="1200" alt="MemoSaver workspace overview: every project in one Archify diagram" src="assets/screenshots/workspace-overview.png" />
+</a>
+
+<sub>`memosaver visual` — every project as an Archify architecture diagram, rendered from your local SQLite memory.</sub>
 
 </div>
 
@@ -36,7 +41,7 @@ AI agents forget everything the moment a session ends. You end up re-explaining 
 | 🧰 Checkpoints | manual + automatic; token-budgeted resume context (~2–5k tokens) |
 | 🤖 Agent-agnostic | Claude Code, OpenCode, cursor, and any MCP-capable agent |
 | 🔒 Local-first | zero cloud, zero network, zero native deps — your data is yours |
-| 🖼 3D visualization | interactive WebGL memory network (`memosaver visual`) |
+| 🖼 Archify diagram | live memory graph as a self-contained Archify architecture diagram (`memosaver visual`) |
 | 🛡 Graceful failure | MemoSaver enhances; it never blocks or crashes the agent |
 
 ## Requirements
@@ -148,26 +153,59 @@ memosaver memory delete <id>
 memosaver memory export --project <path> --out memories.json
 memosaver memory import memories.json
 
+# memory graph diagram
+memosaver visual [--project <id|path|name>] [--page <n>] [--limit 1-12] [--port 8888] [--no-open]
+
 # diagnostics
 memosaver doctor
 ```
 
-## Interactive visualization
+## Memory graph diagram
 
-<img width="1636" height="1005" alt="image" src="https://github.com/user-attachments/assets/4d132138-0ed6-4164-aea9-0015c32a4a19" />
-
-Explore your memory graph in 3D from the browser:
+Explore your memory graph in the browser:
 
 ```bash
-memosaver visual               # serves on http://127.0.0.1:8888/visual
-memosaver visual --port 9000   # custom port
-memosaver visual --no-open     # don't auto-open the browser
+memosaver visual                        # workspace overview: http://127.0.0.1:8888/visual
+memosaver visual --page 2               # next page of projects (12 per page)
+memosaver visual --limit 4              # smaller page
+memosaver visual --project <id|path|name>  # one project's full memory graph
+memosaver visual --port 9000            # custom port
+memosaver visual --no-open              # don't auto-open the browser
 ```
 
-- **3D network view** — projects at the center, sessions in rings around them, memories & checkpoints orbiting their session. All rendered with WebGL (three.js), no backend chat required.
-- **Group by project** — pick a project from the header to focus only that network.
-- **Interactive** — drag any node, orbit / zoom / pan, hover for tooltips, auto-orbit toggle.
-- **Graceful fallback** — if WebGL is unavailable the UI shows a clear message instead of a blank screen.
+The page is a self-contained [Archify](https://github.com/tt-a1i/archify) architecture diagram
+(rendered by a vendored copy of its renderer, no CDN and no WebGL):
+
+- **Workspace overview** — projects as a compact grid (12 per page, `?page=N`), sized so the
+  viewer renders the labels at a readable size instead of shrinking one long band. The card
+  states the range, e.g. `projects 13–24 of 76`.
+- **Project detail** — `--project <id|path|name>` shows agents, sessions, the latest checkpoint
+  and memory clusters (one node per memory type, with counts).
+- **Reader features built in** — dark/light theme, four visual presets, pan/zoom, node search,
+  relationship tracing, presentation stage, and PNG/JPEG/WebP/SVG/WebM export.
+- **Extra endpoints** — `GET /` lists every project with a link to its diagram,
+  `GET /api/spec` returns the generated Archify specification, and both accept
+  `?project=`, `?page=`, `?limit=`.
+- **Why paged** — the renderer validates layout, so a single diagram holds at most 12 nodes;
+  the project index lists everything, and each project has its own diagram.
+- **Truthful failure** — if the renderer rejects a generated layout, the reduced diagram is
+  served with a warning on stderr instead of a half-broken page; a total failure shows the
+  renderer diagnostics.
+
+### Screenshots
+
+Workspace overview — one node per project, agent and session status in the node tag:
+
+![MemoSaver workspace overview](assets/screenshots/workspace-overview.png)
+
+Project detail — agent, sessions, the latest checkpoint and one node per memory type, with the
+capture relationships drawn between them:
+
+![MemoSaver project memory graph](assets/screenshots/project-detail.png)
+
+Project index — every project with its memory count and a link to its own diagram:
+
+![MemoSaver project index](assets/screenshots/project-index.png)
 
 ## Configuration
 
@@ -176,8 +214,10 @@ memosaver visual --no-open     # don't auto-open the browser
 | `home` / `MEMOSAVER_HOME` | `~/.memosaver` | storage root |
 | `memory.min_importance` | `0.3` | minimum score to keep extracted memory |
 | `memory.buffer_size` | `20` | buffered `activity_log` entries before flush |
-| `memory.debounce_ms` | `20000` | time window to auto-flush the buffer |
+| `memory.debounce_ms` | `8000` | idle window that auto-flushes the buffer |
 | `memory.llm.*` | off | optional LLM-backed extractor (see `docs/memory.md`) |
+| `search.hybrid` | `true` | hybrid scoring for `memory_search_hybrid` (`false` = pure BM25) |
+| `search.importance_weight` | `0.35` | importance share of the hybrid score |
 | `resume.max_tokens` | `4000` | resume-context budget |
 | `resume.max_memories` | `25` | max memories in resume context |
 | `logger.level` | `info` | log verbosity |
@@ -185,7 +225,8 @@ memosaver visual --no-open     # don't auto-open the browser
 ```jsonc
 // ~/.memosaver/config.json
 {
-  "memory": { "min_importance": 0.3, "buffer_size": 20 },
+  "memory": { "min_importance": 0.3, "buffer_size": 20, "debounce_ms": 8000 },
+  "search": { "hybrid": true, "importance_weight": 0.35 },
   "resume": { "max_tokens": 4000, "max_memories": 25 }
 }
 ```
@@ -219,7 +260,7 @@ memosaver status     # quick counts
 pnpm install
 pnpm typecheck
 pnpm lint
-pnpm test          # unit + integration + E2E (57 tests)
+pnpm test          # unit + integration + E2E (64 tests)
 pnpm acceptance    # real stdio MCP resume check end-to-end
 pnpm build
 ```
