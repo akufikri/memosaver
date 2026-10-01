@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1942" height="809" alt="ChatGPT Image Aug 9, 2026, 12_03_41 AM" src="https://github.com/user-attachments/assets/e9349954-feea-4283-9567-5b7ebfad35b7" />
+<img width="1942" height="809" alt="MemoSaver banner: an oil painting of a rider on a white horse at dusk, with the MemoSaver wordmark set in brass" src="assets/brand/memosaver-hero.webp" />
 
 # MemoSaver
 

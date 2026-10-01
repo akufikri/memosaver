@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>MemoSaver — memory that outlives the session</title>
+    <meta
+      name="description"
+      content="MemoSaver is a local-first MCP server that keeps a project's decisions, errors and progress in SQLite, then hands the next session a resume context instead of a blank slate."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="build.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <div id="nav-sentinel" aria-hidden="true"></div>
+
+    <header class="nav" id="nav">
+      <div class="container nav__inner">
+        <a class="wordmark" href="#top">MemoSaver</a>
+
+        <nav class="nav__rail flex items-center gap-lg" aria-label="Sections">
+          <a class="nav__link" href="#how">How it works</a>
+          <a class="nav__link" href="#tools">Tools</a>
+          <a class="nav__link" href="#visual">Visual</a>
+          <a class="nav__link" href="#questions">Questions</a>
+        </nav>
+
+        <div class="ms-auto flex items-center gap-sm">
+          <button class="searchpill" id="searchpill" type="button" aria-label="Search this page (Command K)">
+            <span class="searchpill__text">Search…</span>
+            <span class="searchpill__kbd"><kbd>⌘</kbd><kbd>K</kbd></span>
+          </button>
+          <a class="btn btn--primary" href="#quickstart">Install</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- ---------------------------------------------------------- hero -->
+      <section class="hero" id="top" data-cmdk="Top of page" data-cmdk-kind="section">
+        <figure class="hero__art">
+          <img
+            src="../assets/brand/memosaver-hero.webp"
+            alt="MemoSaver banner: an oil painting of a rider on a white horse at dusk above a dark sea, with the MemoSaver wordmark set in brass."
+            width="1942"
+            height="809"
+            fetchpriority="high"
+          />
+        </figure>
+
+        <div class="container hero__inner">
+          <div class="reveal">
+            <h1 class="hero__display">Memory that outlives the session.</h1>
+            <p class="hero__lede">
+              MemoSaver is a local-first MCP server. It stores a project's decisions, errors, solutions and
+              progress in SQLite, then hands the next session a resume context instead of a blank slate.
+            </p>
+            <div class="hero__cta">
+              <a class="btn btn--primary" href="#quickstart">Install the MCP server</a>
+              <a class="link-arrow" href="#tools">Read the tool reference →</a>
+            </div>
+            <p class="mono-label hero__meta">Node ≥ 22.5 · one SQLite file · MIT</p>
+          </div>
+
+          <figure class="code-card hero__proof reveal" aria-label="MemoSaver session resume example">
+            <div class="code-card__bar">
+              <span class="code-card__file">session_start · stdio</span>
+              <span class="chip">local</span>
+            </div>
+            <pre><code><span class="tok-cmd">$</span> <span data-typed='session_start(project_path="/code/auth-service",' class="tok-str"></span><span class="caret" aria-hidden="true"></span><span class="tok-out" hidden data-typed-after>
+                agent="claude-code")
+
+LATEST CHECKPOINT
+Goal: implement authentication
+Completed: auth module with login and register
+Pending: logout and refresh-token rotation
+Next action: implement logout endpoint</span></code></pre>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------- stat strip (T4) -->
+      <section class="container reveal" aria-label="MemoSaver in numbers" data-cmdk="Numbers" data-cmdk-kind="section" id="numbers">
+        <div class="stat-strip tnum grid grid-cols-2 gap-lg py-lg md:grid-cols-4">
+          <div>
+            <p class="stat-strip__value">15</p>
+            <p class="mono-label">MCP tools</p>
+          </div>
+          <div>
+            <p class="stat-strip__value">10</p>
+            <p class="mono-label">Memory types</p>
+          </div>
+          <div>
+            <p class="stat-strip__value">1</p>
+            <p class="mono-label">SQLite file</p>
+          </div>
+          <div>
+            <p class="stat-strip__value">0</p>
+            <p class="mono-label">Cloud services required</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------- stages (F4) -->
+      <section class="container py-2xl md:py-3xl" id="how" data-cmdk="How it works" data-cmdk-kind="section">
+        <h2 class="text-display-s">One session ends. The next one starts where you stopped.</h2>
+        <p class="mt-md max-w-[62ch] text-base text-ink-2">
+          Four stages, in this order, every time you work on a project.
+        </p>
+
+        <ol class="mt-xl grid list-none gap-0 p-0 md:grid-cols-2 md:gap-x-xl">
+          <li class="stage">
+            <p class="stage__no">1.0</p>
+            <h3 class="stage__title">session_start</h3>
+            <p class="stage__body">Point MemoSaver at the project directory. It resolves the path to a deterministic project id,
+                closes any session left interrupted, and returns a resume context when the project already
+                holds state.</p>
+            <ul class="stage__meta list-none p-0"><li>project.id = sha256(realpath)</li>
+              <li>resume.max_tokens 4000</li>
+              <li>interrupted sessions closed on open</li></ul>
+          </li>
+
+          <li class="stage">
+            <p class="stage__no">2.0</p>
+            <h3 class="stage__title">Capture</h3>
+            <p class="stage__body">Decisions, errors, solutions, tasks and progress land in SQLite — written explicitly, or
+                extracted automatically: <code>activity_log</code> buffers raw events, then the rule-based
+                classifier and the importance scorer keep what matters and drop the chatter.</p>
+            <ul class="stage__meta list-none p-0"><li>10 memory types</li>
+              <li>min_importance 0.3</li>
+              <li>buffer 20 events / 8 s idle</li></ul>
+          </li>
+
+          <li class="stage">
+            <p class="stage__no">3.0</p>
+            <h3 class="stage__title">Checkpoint</h3>
+            <p class="stage__body"><code>session_checkpoint</code> snapshots the goal, what finished, what is pending, the
+                blockers and the next action. Ending a session writes one automatically when the session
+                carried state, so the snapshot is never missing.</p>
+            <ul class="stage__meta list-none p-0"><li>newest checkpoint drives the resume</li>
+              <li>checkpoint written as a memory too</li>
+              <li>one per session, guarded</li></ul>
+          </li>
+
+          <li class="stage">
+            <p class="stage__no">4.0</p>
+            <h3 class="stage__title">Resume</h3>
+            <p class="stage__body">The next session — tomorrow, or in a different agent — opens with the latest checkpoint,
+                pending tasks, important decisions and recent blockers. The agent continues instead of
+                re-deriving what you already decided.</p>
+            <ul class="stage__meta list-none p-0"><li>resume context on session_start</li>
+              <li>cross-agent: claude-code → opencode</li>
+              <li>recall + FTS5 search for the rest</li></ul>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ---------------------------------------------------------- real screenshots -->
+      <section class="container py-2xl" id="visual" data-cmdk="Visual (memory graph)" data-cmdk-kind="section">
+        <h2 class="text-2xl">The memory graph, rendered from your own database.</h2>
+        <p class="mt-md max-w-[62ch] text-base text-ink-2">
+          <code>memosaver visual</code> serves an Archify architecture diagram built from the local SQLite
+          file: one node per project, then agents, sessions, checkpoints and memory clusters per project.
+          The three captures below are the real output, not mockups.
+        </p>
+
+        <div class="shots mt-xl grid gap-md">
+          <div class="shots__tabs" role="tablist" aria-label="Memory graph views">
+            <button class="tab" role="tab" id="tab-workspace" aria-controls="panel-workspace" aria-selected="true" type="button">
+              Workspace overview
+            </button>
+            <button class="tab" role="tab" id="tab-project" aria-controls="panel-project" aria-selected="false" tabindex="-1" type="button">
+              Project detail
+            </button>
+            <button class="tab" role="tab" id="tab-index" aria-controls="panel-index" aria-selected="false" tabindex="-1" type="button">
+              Project index
+            </button>
+          </div>
+
+          <div class="shots__panel" id="panel-workspace" role="tabpanel" aria-labelledby="tab-workspace">
+            <figure>
+              <img
+                src="../assets/screenshots/workspace-overview.png"
+                alt="MemoSaver workspace diagram: twelve projects as nodes in two rows, each tagged with its agent and session status."
+                width="2000"
+                height="1250"
+              />
+              <figcaption>memosaver visual — workspace overview · 12 projects per page, agent and status per node</figcaption>
+            </figure>
+          </div>
+
+          <div class="shots__panel" id="panel-project" role="tabpanel" aria-labelledby="tab-project" hidden>
+            <figure>
+              <img
+                src="../assets/screenshots/project-detail.png"
+                alt="MemoSaver project diagram: the agent, two sessions, and one node per memory type, with capture relationships drawn between them."
+                width="2000"
+                height="1250"
+                loading="lazy"
+              />
+              <figcaption>memosaver visual --project memosaver · sessions, latest checkpoint, memory clusters</figcaption>
+            </figure>
+          </div>
+
+          <div class="shots__panel" id="panel-index" role="tabpanel" aria-labelledby="tab-index" hidden>
+            <figure>
+              <img
+                src="../assets/screenshots/project-index.png"
+                alt="MemoSaver project index page listing every project with its memory count and a link to its own diagram."
+                width="2000"
+                height="1250"
+                loading="lazy"
+              />
+              <figcaption>GET / — every project, its memory count, and a link to its own diagram</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------- spec sheet (F3) -->
+      <section class="container py-2xl" id="tools" data-cmdk="MCP tools" data-cmdk-kind="section">
+        <h2 class="text-2xl">Fifteen tools. Two groups.</h2>
+        <p class="mt-md max-w-[62ch] text-base text-ink-2">
+          Every tool returns structured data; failures come back as MCP error results rather than crashing
+          the agent. <code>project_id</code> wins over <code>project_path</code>; a path MemoSaver has never
+          seen is a <code>NOT_FOUND</code>, never a silently unscoped query.
+        </p>
+
+        <div class="table-scroll">
+          <table class="spec-sheet tnum mt-xl">
+            <caption class="mono-label">Lifecycle — sessions and checkpoints</caption>
+          <thead>
+            <tr>
+              <th scope="col">Tool</th>
+              <th scope="col">Arguments</th>
+              <th scope="col">Returns</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-tool="session_start">
+              <td>session_start</td>
+              <td>project_path, agent, resume?</td>
+              <td>project · session · resume context</td>
+            </tr>
+            <tr data-tool="session_checkpoint">
+              <td>session_checkpoint</td>
+              <td>session_id, goal?, current_task?, summary?, completed?, pending?, blockers?, next_action?, current_state?</td>
+              <td>checkpoint</td>
+            </tr>
+            <tr data-tool="session_end">
+              <td>session_end</td>
+              <td>session_id, status?, summary?</td>
+              <td>session, or { ok: false, error }</td>
+            </tr>
+            <tr data-tool="session_status">
+              <td>session_status</td>
+              <td>session_id?, project_id?, project_path?</td>
+              <td>one session, a project's sessions, or all</td>
+            </tr>
+            <tr data-tool="session_timeline">
+              <td>session_timeline</td>
+              <td>session_id</td>
+              <td>session · checkpoints · memories · events</td>
+            </tr>
+          </tbody>
+          </table>
+        </div>
+
+        <div class="table-scroll">
+          <table class="spec-sheet tnum mt-xl">
+            <caption class="mono-label">Memory — capture, search, portability</caption>
+          <thead>
+            <tr>
+              <th scope="col">Tool</th>
+              <th scope="col">Arguments</th>
+              <th scope="col">Returns</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-tool="memory_insert">
+              <td>memory_insert</td>
+              <td>project_id | project_path, content, session_id?, type?, importance?, dedupe?</td>
+              <td>memory, or null when deduped</td>
+            </tr>
+            <tr data-tool="memory_update">
+              <td>memory_update</td>
+              <td>memory_id, content?, type?, importance?, metadata?</td>
+              <td>updated memory</td>
+            </tr>
+            <tr data-tool="memory_delete">
+              <td>memory_delete</td>
+              <td>memory_id</td>
+              <td>{ deleted: true }</td>
+            </tr>
+            <tr data-tool="memory_recall">
+              <td>memory_recall</td>
+              <td>project_id | project_path, session_id?, type?, min_importance?, limit?</td>
+              <td>memories by importance</td>
+            </tr>
+            <tr data-tool="memory_search">
+              <td>memory_search</td>
+              <td>query, project_id | project_path?, session_id?, type?, limit?</td>
+              <td>{ memory, score }[] via FTS5 BM25</td>
+            </tr>
+            <tr data-tool="memory_search_hybrid">
+              <td>memory_search_hybrid</td>
+              <td>same as memory_search</td>
+              <td>{ memory, score, meta }[] re-ranked</td>
+            </tr>
+            <tr data-tool="memory_capture">
+              <td>memory_capture</td>
+              <td>project_id | project_path, text, session_id?, type?</td>
+              <td>{ captured, ignored, memories }</td>
+            </tr>
+            <tr data-tool="activity_log">
+              <td>activity_log</td>
+              <td>project_id | project_path, text, session_id?, type?, flush?</td>
+              <td>{ buffered, pending }</td>
+            </tr>
+            <tr data-tool="memory_export">
+              <td>memory_export</td>
+              <td>project_id | project_path?, type?</td>
+              <td>portable JSON document</td>
+            </tr>
+            <tr data-tool="memory_import">
+              <td>memory_import</td>
+              <td>document</td>
+              <td>{ imported, skipped, ids }</td>
+            </tr>
+          </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------- quickstart (the one dark beat) -->
+      <section class="band py-2xl md:py-3xl" id="quickstart" data-cmdk="Quickstart (install)" data-cmdk-kind="section">
+        <div class="container">
+          <h2 class="text-display-s">Install, register, verify.</h2>
+          <p class="mt-md max-w-[62ch] text-base text-graphite-ink/80">
+            Three commands. Nothing leaves the machine; the database is created at
+            <code class="text-graphite-ink">~/.memosaver/memosaver.db</code> on first run.
+          </p>
+
+          <div class="mt-xl grid gap-lg lg:grid-cols-2">
+            <div class="step-block">
+              <div class="step-block__head">
+                <span class="step-block__title">1 · Build from source</span>
+                <button class="copy-btn" type="button" aria-label="Copy build commands">
+                  <span class="copy-btn__label">Copy</span>
+                </button>
+              </div>
+              <pre><code>git clone https://github.com/akufikri/memosaver.git
+cd memosaver
+pnpm install
+pnpm build</code></pre>
+            </div>
+
+            <div class="step-block">
+              <div class="step-block__head">
+                <span class="step-block__title">2 · Register with Claude Code</span>
+                <button class="copy-btn" type="button" aria-label="Copy Claude Code registration command">
+                  <span class="copy-btn__label">Copy</span>
+                </button>
+              </div>
+              <pre><code>claude mcp add memosaver --scope user \
+  -- node /path/to/memosaver/dist/mcp/entry.js</code></pre>
+            </div>
+
+            <div class="step-block">
+              <div class="step-block__head">
+                <span class="step-block__title">3 · Verify</span>
+                <button class="copy-btn" type="button" aria-label="Copy verification commands">
+                  <span class="copy-btn__label">Copy</span>
+                </button>
+              </div>
+              <pre><code>memosaver doctor     # storage, FTS5, config, agent wiring
+memosaver status     # projects, sessions, memories</code></pre>
+            </div>
+
+            <div class="step-block">
+              <div class="step-block__head">
+                <span class="step-block__title">OpenCode — ~/.config/opencode/opencode.json</span>
+                <button class="copy-btn" type="button" aria-label="Copy OpenCode configuration">
+                  <span class="copy-btn__label">Copy</span>
+                </button>
+              </div>
+              <pre><code>{
+  "mcp": {
+    "memosaver": {
+      "type": "local",
+      "enabled": true,
+      "command": ["node", "/path/to/memosaver/dist/mcp/entry.js"]
+    }
+  }
+}</code></pre>
+            </div>
+          </div>
+
+          <p class="mono-label mt-lg">
+            memosaver install writes these configs for you · any MCP client works over stdio
+          </p>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------- questions -->
+      <section class="container py-2xl" id="questions" data-cmdk="Questions" data-cmdk-kind="section">
+        <h2 class="text-2xl">Questions worth asking</h2>
+        <div class="mt-lg grid gap-0 lg:grid-cols-1">
+          <details class="qa">
+            <summary>Does any of this leave my machine?</summary>
+            <p>
+              No. Storage is one SQLite file at <code>~/.memosaver/memosaver.db</code>; there is no cloud
+              service, no account and no telemetry. The optional LLM extractor stays off unless you set
+              <code>memory.llm.api_key</code>, and only then do captured events go to the endpoint you name.
+            </p>
+          </details>
+          <details class="qa">
+            <summary>Which agents does it work with?</summary>
+            <p>
+              Any MCP client. <code>memosaver install</code> wires Claude Code, OpenCode and Claude Desktop;
+              the server itself is a plain stdio binary (<code>node dist/mcp/entry.js</code>), so anything
+              that speaks MCP can register it.
+            </p>
+          </details>
+          <details class="qa">
+            <summary>What happens to a session that crashes?</summary>
+            <p>
+              The next <code>session_start</code> marks it interrupted and then builds the resume from the
+              newest checkpoint — so you see both the interruption and the last recorded state, not an empty
+              session.
+            </p>
+          </details>
+          <details class="qa">
+            <summary>How is search implemented?</summary>
+            <p>
+              SQLite FTS5 with BM25 ranking, plus a hybrid pass that re-ranks by token overlap and
+              importance. Query text is sanitised before it reaches <code>MATCH</code>, so operator
+              characters like <code>error:</code> or an unbalanced quote return results instead of an
+              <code>fts5: syntax error</code>.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------- closing CTA -->
+      <section class="container pb-2xl md:pb-3xl">
+        <div class="border-t border-rule pt-xl">
+          <h2 class="text-xl">Give the next session something to start from.</h2>
+          <div class="mt-lg flex flex-wrap items-center gap-md">
+            <a class="btn btn--primary" href="#quickstart">Install the MCP server</a>
+            <a class="link-arrow" href="https://github.com/akufikri/memosaver">Browse the source on GitHub ↗</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot-line">
+      <div class="container flex flex-wrap items-center gap-sm">
+        <span>memosaver · MIT licensed · 2026</span>
+        <span aria-hidden="true">·</span>
+        <a href="https://github.com/akufikri/memosaver">github.com/akufikri/memosaver</a>
+        <span aria-hidden="true">·</span>
+        <a href="#questions">Questions</a>
+        <span aria-hidden="true">·</span>
+        <span>built with Node ≥ 22.5 and node:sqlite</span>
+      </div>
+    </footer>
+
+    <!-- ---------------------------------------------------------- command palette (N13) -->
+    <div class="cmdk" id="cmdk" aria-hidden="true">
+      <div class="cmdk__backdrop" data-close></div>
+      <div class="cmdk__panel" role="dialog" aria-modal="true" aria-label="Search this page">
+        <div class="cmdk__field">
+          <input id="cmdk-input" type="text" placeholder="Search sections and tools…" autocomplete="off" />
+          <kbd>esc</kbd>
+        </div>
+        <div class="cmdk__results" id="cmdk-results"></div>
+        <div class="cmdk__foot">
+          <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+          <span><kbd>↵</kbd> jump</span>
+          <span><kbd>esc</kbd> close</span>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

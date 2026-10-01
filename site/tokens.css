@@ -1,0 +1,128 @@
+/* Hallmark · tokens · genre: atmospheric (dev-tool register) · theme: custom — "warm oil-painting dark, brass signal"
+ * Vibe: dusk landscape, aged brass, warm near-black ground.
+ * Paper band: dark oklch(19% 0.008 78) · Display style: classical-serif (Cormorant Garamond) ·
+ * Accent hue: warm brass oklch(82% 0.083 76) — sampled from the project banner (#e4be88).
+ * Every colour below is derived from that banner: ground #161411, brass #e4be88, warm bone ink.
+ */
+
+@theme {
+  /* ---- surfaces: warm near-black, never #000 ---- */
+  --color-paper: oklch(19% 0.008 78);
+  --color-paper-2: oklch(23% 0.01 78);
+  --color-paper-3: oklch(27% 0.012 78);
+  /* one step deeper than the ground — the single recessed beat */
+  --color-recess: oklch(14% 0.008 78);
+
+  /* ---- hairlines do the work ---- */
+  --color-rule: oklch(30% 0.012 78);
+  --color-rule-2: oklch(38% 0.014 78);
+
+  /* ---- text: warm bone, never #fff ---- */
+  --color-ink: oklch(94% 0.014 85);
+  --color-ink-2: oklch(86% 0.016 85);
+  --color-neutral: oklch(62% 0.02 80);
+  --color-muted: oklch(70% 0.02 80);
+
+  /* ---- one brass signal, sampled from the banner wordmark ---- */
+  --color-accent: oklch(82% 0.083 76);
+  --color-accent-ink: oklch(19% 0.02 78);
+  --color-accent-soft: oklch(28% 0.03 78);
+  --color-accent-deep: oklch(74% 0.075 76);
+  --color-accent-deeper: oklch(66% 0.07 76);
+  --color-accent-on-dark: oklch(82% 0.083 76);
+
+  /* ---- code + panel surface: recessed below the ground ---- */
+  --color-graphite: oklch(16% 0.008 78);
+  --color-graphite-2: oklch(21% 0.01 78);
+  --color-graphite-rule: oklch(30% 0.012 78);
+  --color-graphite-ink: oklch(92% 0.014 85);
+  --color-graphite-muted: oklch(72% 0.02 80);
+
+  /* ---- state colours ---- */
+  --color-focus: oklch(82% 0.083 76);
+  --color-error: oklch(72% 0.15 30);
+  --color-success: oklch(78% 0.12 150);
+
+  /* ---- overlay + shadow: alpha is a modifier here, not a palette colour ---- */
+  --color-scrim: oklch(12% 0.008 78 / 0.72);
+  --shadow-whisper: 0 1px 2px oklch(10% 0.01 78 / 0.55);
+
+  /* ---- type: 2 + 1 (classical serif display, neutral sans body, mono code register) ---- */
+  --font-display: "Cormorant Garamond", ui-serif, Georgia, serif;
+  --font-body: "Switzer", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* ---- scale: major third (1.25) from a 16px body ---- */
+  --text-xs: 0.64rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.8rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6;
+  --text-md: 1.25rem;
+  --text-md--line-height: 1.5;
+  --text-lg: 1.5625rem;
+  --text-lg--line-height: 1.3;
+  --text-xl: 1.9531rem;
+  --text-xl--line-height: 1.25;
+  --text-2xl: 2.4414rem;
+  --text-2xl--line-height: 1.15;
+  --text-3xl: 3.0518rem;
+  --text-3xl--line-height: 1.1;
+  /* Cormorant sets small; the serif display runs one rung larger than a grotesk would.
+     The cap is 5rem so the headline + CTA still land inside a 1280×800 fold. */
+  --text-display: clamp(2.75rem, 4.6vw + 0.5rem, 5rem);
+  --text-display--line-height: 1.02;
+  --text-display-s: clamp(2.5rem, 4vw + 0.8rem, 4rem);
+  --text-display-s--line-height: 1.06;
+
+  /* ---- radii: drawn with a ruler ---- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* ---- spacing: 4pt base, nine steps (utility namespace) ---- */
+  --spacing-3xs: 0.125rem;
+  --spacing-2xs: 0.25rem;
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2.5rem;
+  --spacing-2xl: 4rem;
+  --spacing-3xl: 6rem;
+  --spacing-4xl: 9rem;
+
+  /* ---- motion language ---- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Tokens Tailwind has no utility namespace for — referenced by name in component CSS.
+   The spacing aliases keep the canonical --space-* names pointing at one source of truth. */
+:root {
+  --space-3xs: var(--spacing-3xs);
+  --space-2xs: var(--spacing-2xs);
+  --space-xs: var(--spacing-xs);
+  --space-sm: var(--spacing-sm);
+  --space-md: var(--spacing-md);
+  --space-lg: var(--spacing-lg);
+  --space-xl: var(--spacing-xl);
+  --space-2xl: var(--spacing-2xl);
+  --space-3xl: var(--spacing-3xl);
+  --space-4xl: var(--spacing-4xl);
+
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  --rule-hairline: 1px;
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 400;
+  --z-toast: 500;
+}

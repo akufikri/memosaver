@@ -28,6 +28,8 @@
     "dev": "tsx src/cli/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "site:build": "tailwindcss -i site/styles.css -o site/build.css --minify",
+    "site:watch": "tailwindcss -i site/styles.css -o site/build.css --watch",
     "acceptance": "node scripts/acceptance.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests --no-error-on-unmatched-pattern"
@@ -53,8 +55,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@tailwindcss/cli": "^4.3.3",
     "@types/node": "^22.5.0",
     "eslint": "^9.9.0",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.19.0",
     "typescript": "^5.5.4",
     "typescript-eslint": "^8.3.0",

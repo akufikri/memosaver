@@ -1,0 +1,11 @@
+[
+  {
+    "date": "2026-10-01",
+    "macrostructure": "Narrative Workflow",
+    "theme": "custom",
+    "theme_axes": "dark (19%) / classical-serif (Cormorant Garamond) / warm brass 76°",
+    "vibe": "warm oil-painting dark, brass signal — tuned to the project banner",
+    "enrichment": "project banner in the hero + real product captures in <figure> (no re-drawn chrome)",
+    "brief": "MemoSaver · static landing page (HTML + Tailwind, site/)"
+  }
+]
