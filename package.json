@@ -1,6 +1,6 @@
 {
   "name": "memosaver",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local-first persistent memory and session continuity MCP server for AI agents",
   "type": "module",
   "license": "MIT",
