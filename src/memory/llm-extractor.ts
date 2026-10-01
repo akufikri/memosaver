@@ -27,6 +27,9 @@ const PROMPT_SYSTEM =
   'Prefer 1-3 memories per line; empty array is valid. ' +
   'importance: 0.9 decisions/architecture, 0.6-0.8 errors/solutions/tasks, <0.5 routine facts.';
 
+/** Fallback when composeExtractor is called without explicit extract options. */
+const DEFAULT_EXTRACT_OPTIONS: ExtractOptions = { minImportance: 0.3, maxContentLength: 20000 };
+
 /**
  * LLM-backed memory extractor behind the same MemoryExtractor interface as the
  * rule-based engine. Degrades gracefully:
@@ -55,7 +58,7 @@ export class LlmMemoryExtractor implements MemoryExtractor {
           { role: 'user', content: buildPrompt(events, this.options) }
         ]
       });
-      return parseCandidates(raw, this.options);
+      return parseCandidates(raw, this.options, sharedSessionId(events));
     } catch {
       return [];
     }
@@ -69,13 +72,11 @@ export class LlmMemoryExtractor implements MemoryExtractor {
  */
 export function composeExtractor(
   ruleBased: MemoryExtractor,
-  config?: LlmExtractorConfig
+  config?: LlmExtractorConfig,
+  options?: ExtractOptions
 ): MemoryExtractor {
   if (!config || config.disabled === true || !config.api_key) return ruleBased;
-  const llm = new LlmMemoryExtractor(
-    { minImportance: 0.3, maxContentLength: 20000 },
-    config
-  );
+  const llm = new LlmMemoryExtractor(options ?? DEFAULT_EXTRACT_OPTIONS, config);
   return {
     extract: async (events) => {
       const direct = events.filter((e) => e.type != null);
@@ -105,7 +106,7 @@ function maxToKeep(n: number): number {
   return Math.max(1, Math.min(8, n));
 }
 
-function parseCandidates(raw: string, options: ExtractOptions): MemoryCandidate[] {
+function parseCandidates(raw: string, options: ExtractOptions, sessionId?: string): MemoryCandidate[] {
   const json = extractJson(raw);
   if (!json) return [];
   let parsed: { memories?: unknown };
@@ -127,7 +128,7 @@ function parseCandidates(raw: string, options: ExtractOptions): MemoryCandidate[
       type,
       content: content.slice(0, options.maxContentLength),
       importance: Math.round(importance * 100) / 100,
-      metadata: { extracted_by: 'llm' }
+      metadata: { extracted_by: 'llm', ...(sessionId ? { session_id: sessionId } : {}) }
     });
   }
   return out;
@@ -145,6 +146,18 @@ function extractJson(raw: string): string | null {
 
 function clamp(value: number): number {
   return Math.min(1, Math.max(0, value));
+}
+
+/**
+ * The session id shared by every event, if there is exactly one. LLM candidates
+ * cannot be attributed to a single event, so only an unambiguous id is kept.
+ */
+function sharedSessionId(events: EventActivity[]): string | undefined {
+  const ids = new Set<string>();
+  for (const event of events) {
+    if (event.session_id) ids.add(event.session_id);
+  }
+  return ids.size === 1 ? [...ids][0] : undefined;
 }
 
 /** Default OpenAI-compatible chat completion call via global fetch. */

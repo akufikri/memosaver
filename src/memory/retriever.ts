@@ -26,14 +26,25 @@ export interface HybridSearchResult {
 }
 
 const DEFAULT_OVERLAP_WEIGHT = 0.5;
+const DEFAULT_IMPORTANCE_WEIGHT = 0.3;
 
 /**
  * Retrieval facade. Keyword FTS (BM25) + metadata filtering.
  * `searchHybrid` blends BM25 with token-overlap similarity and importance so
  * results stay relevant even when FTS finds few/zero exact matches.
  */
+export interface RetrieverOptions {
+  /** weight given to memory importance in hybrid scoring (0..1) */
+  importanceWeight?: number;
+  /** false keeps pure BM25 order (disables the overlap/importance blend) */
+  hybrid?: boolean;
+}
+
 export class MemoryRetriever {
-  constructor(private readonly repository: MemoryRepository) {}
+  constructor(
+    private readonly repository: MemoryRepository,
+    private readonly options: RetrieverOptions = {}
+  ) {}
 
   /** Keyword search over memory content (BM25-ranked). */
   search(query: string, options: MemorySearchOptions = {}): MemorySearchResult[] {
@@ -48,8 +59,15 @@ export class MemoryRetriever {
   searchHybrid(query: string, options: HybridSearchOptions = {}): HybridSearchResult[] {
     const limit = options.limit ?? 20;
     const overlapWeight = options.overlap_weight ?? DEFAULT_OVERLAP_WEIGHT;
+    const importanceWeight = this.options.importanceWeight ?? DEFAULT_IMPORTANCE_WEIGHT;
 
     const ftsResults = this.repository.search(query, { ...options, limit: limit * 4 });
+    if (this.options.hybrid === false) {
+      return ftsResults.slice(0, limit).map((r) => {
+        const score = normalizeRank(r.score);
+        return { memory: r.memory, score, meta: { overlap: 0, bm25: round3(score) } };
+      });
+    }
     const ftsById = new Map<string, number>();
     for (const r of ftsResults) {
       ftsById.set(r.memory.id, normalizeRank(r.score));
@@ -73,7 +91,7 @@ export class MemoryRetriever {
         const overlap = tokenOverlap(queryTokens, tokenize(memory.content));
         const bm25 = ftsById.get(memory.id) ?? 0;
         const blended = overlapWeight * overlap + (1 - overlapWeight) * bm25;
-        const withImportance = blended * 0.7 + memory.importance * 0.3;
+        const withImportance = blended * (1 - importanceWeight) + memory.importance * importanceWeight;
         return { memory, score: withImportance, overlap, bm25 };
       })
       .filter((r) => r.overlap > 0 || r.bm25 > 0)

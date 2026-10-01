@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTestApp } from './helpers.js';
+import { createTestApp, tempProjectPath } from './helpers.js';
 import { LlmMemoryExtractor, composeExtractor } from '../src/memory/llm-extractor.js';
 import { RuleBasedExtractor } from '../src/memory/extractor.js';
 
@@ -76,6 +76,56 @@ describe('export / import', () => {
     expect(all.map((m) => m.content)).toContain('export me');
   });
 
+  it('imports memories whose session does not exist locally', () => {
+    const app = createTestApp();
+    const result = app.service.importMemories({
+      app: 'memosaver',
+      version: 1,
+      exported_at: Date.now(),
+      project: { id: 'project_other_machine', path: tempProjectPath('import-foreign'), name: 'foreign' },
+      memories: [
+        {
+          project_id: 'project_other_machine',
+          session_id: 'session_other_machine',
+          type: 'DECISION',
+          content: 'foreign decision kept across machines',
+          importance: 0.9
+        }
+      ]
+    });
+
+    expect(result.imported).toBe(1);
+    const saved = app.service.getMemory(result.ids[0]!)!;
+    expect(saved.session_id).toBeNull();
+    expect(saved.metadata['imported_session_id']).toBe('session_other_machine');
+  });
+
+  it('rolls back the whole import when a row fails', () => {
+    const app = createTestApp();
+    const { project } = app.service.startSession(tempProjectPath('import-rollback'), 'a');
+    const originalSave = app.engine.save.bind(app.engine);
+    let calls = 0;
+    app.engine.save = (input) => {
+      calls += 1;
+      if (calls === 2) throw new Error('boom');
+      return originalSave(input);
+    };
+
+    expect(() =>
+      app.service.importMemories({
+        app: 'memosaver',
+        version: 1,
+        exported_at: Date.now(),
+        project: { id: project.id, path: project.path, name: project.name },
+        memories: [
+          { project_id: project.id, type: 'FACT', content: 'first row survives?' },
+          { project_id: project.id, type: 'FACT', content: 'second row throws' }
+        ]
+      })
+    ).toThrow('boom');
+    expect(app.service.exportMemories({ project_id: project.id }).memories).toHaveLength(0);
+  });
+
   it('rejects invalid documents', () => {
     const app = createTestApp();
     expect(() => app.service.importMemories({ memories: [] } as never)).toThrow();
@@ -144,6 +194,21 @@ describe('LLM extractor', () => {
     expect(out[0]!.type).toBe('DECISION');
     expect(out[0]!.content).toBe('Use postgres for JSONB.');
     expect(out[0]!.importance).toBe(0.9);
+  });
+
+  it('attaches the shared session id to LLM candidates', async () => {
+    const llm = new LlmMemoryExtractor(
+      { minImportance: 0.3, maxContentLength: 1000 },
+      { provider: 'openai-compatible', api_key: 'sk-test' },
+      async () =>
+        JSON.stringify({
+          memories: [{ content: 'Use postgres for JSONB.', type: 'DECISION', importance: 0.9 }]
+        })
+    );
+    const out = await llm.extract([
+      { text: 'we chose postgres', session_id: 'session_1', timestamp: Date.now() }
+    ]);
+    expect(out[0]!.metadata!['session_id']).toBe('session_1');
   });
 
   it('degrades to rule-based when the LLM call fails', async () => {

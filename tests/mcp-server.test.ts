@@ -100,6 +100,18 @@ describe('MCP server', () => {
     await close();
   });
 
+  it('rejects an unknown project_path instead of leaking other projects', async () => {
+    const { client, close } = await connectClient();
+    await call(client, 'memory_insert', { project_path: PROJECT, content: 'private note of PROJECT' });
+
+    const res = await client.callTool({
+      name: 'memory_search',
+      arguments: { query: 'private note', project_path: '/tmp/memosaver-does-not-exist' }
+    });
+    expect(res.isError).toBe(true);
+    await close();
+  });
+
   it('returns an error result for bad input instead of crashing', async () => {
     const { client, close } = await connectClient();
     const res = await client.callTool({ name: 'memory_search', arguments: { query: '' } });

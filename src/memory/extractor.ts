@@ -39,7 +39,8 @@ export class RuleBasedExtractor implements MemoryExtractor {
           metadata: {
             extracted_by: 'rule-based',
             confidence: round2(classification.confidence),
-            timestamp: event.timestamp ?? Date.now()
+            timestamp: event.timestamp ?? Date.now(),
+            ...(event.session_id ? { session_id: event.session_id } : {})
           }
         });
       }

@@ -3,6 +3,7 @@ import { MemoryRepository } from '../storage/repositories/memory-repository.js';
 import { RuleBasedExtractor, type MemoryExtractor } from './extractor.js';
 import { scoreImportance } from './scorer.js';
 import { InvalidInputError } from '../util/errors.js';
+import type { Logger } from '../util/logger.js';
 import { newId } from '../util/id.js';
 
 export interface SaveMemoryInput {
@@ -44,7 +45,8 @@ export class MemoryEngine {
   constructor(
     private readonly repository: MemoryRepository,
     private readonly config: EngineConfig,
-    extractor?: MemoryExtractor
+    extractor?: MemoryExtractor,
+    private readonly logger?: Logger
   ) {
     this.extractor =
       extractor ??
@@ -113,7 +115,9 @@ export class MemoryEngine {
     // force flush when buffer full
     if (queue.length >= this.config.bufferSize) {
       this.cancelDebounce(projectId);
-      this.flushBuffer(projectId).catch(() => {});
+      this.flushBuffer(projectId).catch((err: unknown) => {
+        this.logger?.warn('activity buffer flush failed', { project: projectId, error: String(err) });
+      });
       return;
     }
 
@@ -122,7 +126,9 @@ export class MemoryEngine {
       this.cancelDebounce(projectId);
       const timer = setTimeout(() => {
         this.debounceTimers.delete(projectId);
-        this.flushBuffer(projectId).catch(() => {});
+        this.flushBuffer(projectId).catch((err: unknown) => {
+          this.logger?.warn('activity buffer flush failed', { project: projectId, error: String(err) });
+        });
       }, this.config.debounceMs);
       this.debounceTimers.set(projectId, timer);
     }

@@ -75,7 +75,7 @@ export function registerInstallCommand(program: Command): void {
   program
     .command('install')
     .description('Register MemoSaver as an MCP server and wire agent instructions')
-    .option('-s, --scope <scope>', 'claude-code scope: user (global) or local (project)', 'user')
+    .option('-s, --scope <scope>', 'claude-code scope: user (global), local (this project, ~/.claude.json), or project (./.mcp.json)', 'user')
     .option('--no-claude', 'skip Claude Code CLI registration')
     .option('--no-opencode', 'skip OpenCode registration')
     .option('--no-instructions', 'skip injecting instructions into ~/.claude/CLAUDE.md')
@@ -109,6 +109,16 @@ export function registerInstallCommand(program: Command): void {
 }
 
 function installClaudeCode(entry: string, scope: string): void {
+  if (scope === 'project') {
+    installClaudeCodeProject(entry);
+    return;
+  }
+  if (scope !== 'user' && scope !== 'local') {
+    console.error(`ERROR: unknown --scope '${scope}' (expected: user, local, project)`);
+    process.exitCode = 1;
+    return;
+  }
+
   const claudeJson = resolve(homedir(), '.claude.json');
   let config: Record<string, unknown> = {};
   if (existsSync(claudeJson)) {
@@ -120,16 +130,54 @@ function installClaudeCode(entry: string, scope: string): void {
       return;
     }
   }
-  const servers = (config.mcpServers as Record<string, unknown>) ?? {};
+  const servers =
+    scope === 'local'
+      ? localScopeServers(config, process.cwd())
+      : ((config.mcpServers as Record<string, unknown> | undefined) ?? {});
   if (servers['memosaver']) {
-    console.log(`claude-code: memosaver already configured in mcpServers (${scope} scope).`);
+    console.log(`claude-code: memosaver already configured (${scope} scope).`);
+    return;
+  }
+  servers['memosaver'] = { type: 'stdio', command: 'node', args: [entry] };
+  config.mcpServers = scope === 'user' ? servers : config.mcpServers;
+  mkdirSync(dirname(claudeJson), { recursive: true });
+  writeFileSync(claudeJson, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  console.log(`claude-code: added memosaver to ${claudeJson} (${scope} scope).`);
+}
+
+/** Claude Code keeps local-scope servers under projects[<cwd>].mcpServers. */
+function localScopeServers(config: Record<string, unknown>, projectDir: string): Record<string, unknown> {
+  const projects = (config.projects as Record<string, unknown> | undefined) ?? {};
+  const project = (projects[projectDir] as Record<string, unknown> | undefined) ?? {};
+  const servers = (project.mcpServers as Record<string, unknown> | undefined) ?? {};
+  project.mcpServers = servers;
+  projects[projectDir] = project;
+  config.projects = projects;
+  return servers;
+}
+
+/** Project scope lives in a shareable ./.mcp.json at the repo root. */
+function installClaudeCodeProject(entry: string): void {
+  const file = resolve(process.cwd(), '.mcp.json');
+  let config: Record<string, unknown> = {};
+  if (existsSync(file)) {
+    try {
+      config = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
+    } catch (err) {
+      console.error(`ERROR: cannot parse ${file}: ${(err as Error).message}`);
+      process.exitCode = 1;
+      return;
+    }
+  }
+  const servers = (config.mcpServers as Record<string, unknown> | undefined) ?? {};
+  if (servers['memosaver']) {
+    console.log(`claude-code: memosaver already configured in ${file} (project scope).`);
     return;
   }
   servers['memosaver'] = { type: 'stdio', command: 'node', args: [entry] };
   config.mcpServers = servers;
-  mkdirSync(dirname(claudeJson), { recursive: true });
-  writeFileSync(claudeJson, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
-  console.log(`claude-code: added memosaver to ${claudeJson} (${scope} scope).`);
+  writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  console.log(`claude-code: added memosaver to ${file} (project scope).`);
 }
 
 function installOpenCode(entry: string): void {

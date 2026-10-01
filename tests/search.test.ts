@@ -14,6 +14,17 @@ describe('memory retrieval', () => {
     expect(results[0]!.memory.content).toContain('JWT');
   });
 
+  it('handles FTS5 operator characters in queries', () => {
+    const app = createTestApp();
+    const { project } = app.service.startSession(PROJECT, 'a');
+    const pid = project.id;
+    app.engine.save({ projectId: pid, content: 'Login failed: error: connection timeout after 30s.' });
+
+    expect(app.service.retriever.search('error: timeout', { project_id: pid })).toHaveLength(1);
+    expect(app.service.retriever.search('"unbalanced', { project_id: pid })).toHaveLength(0);
+    expect(app.service.retriever.search('NOT AND OR', { project_id: pid })).toHaveLength(0);
+  });
+
   it('recalls sorted by importance', () => {
     const app = createTestApp();
     const { project } = app.service.startSession(PROJECT, 'a');

@@ -149,8 +149,10 @@ export class MemoryRepository {
 
   /** Full-text search over content using SQLite FTS5 (BM25 rank). */
   search(query: string, options: MemorySearchOptions = {}): MemorySearchResult[] {
+    const match = buildFtsMatch(query);
+    if (match == null) return [];
     const clauses: string[] = ['memories_fts MATCH ?'];
-    const params: SQLInputValue[] = [query];;
+    const params: SQLInputValue[] = [match];
     if (options.project_id) {
       clauses.push('m.project_id = ?');
       params.push(options.project_id);
@@ -196,4 +198,17 @@ export class MemoryRepository {
 
 function normalizeContent(content: string): string {
   return content.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * Build a safe FTS5 MATCH expression from raw user text. Raw input must never
+ * reach MATCH: quotes, colons, dashes and other FTS5 operators raise
+ * "fts5: syntax error" instead of returning results. Each word becomes a
+ * quoted phrase and terms are AND-ed for keyword precision. Returns null when
+ * the query contains no usable term.
+ */
+function buildFtsMatch(query: string): string | null {
+  const terms = query.match(/[\p{L}\p{N}_]+/gu) ?? [];
+  if (terms.length === 0) return null;
+  return terms.map((term) => `"${term}"`).join(' ');
 }

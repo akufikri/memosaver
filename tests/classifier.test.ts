@@ -16,6 +16,10 @@ describe('memory classifier', () => {
     );
   });
 
+  it('classifies a contraction-based failure as an error', () => {
+    expect(classify("Can't reach the broker.").type).toBe('ERROR');
+  });
+
   it('classifies architecture', () => {
     expect(classify('The service layer pattern keeps controllers thin.').type).toBe('ARCHITECTURE');
   });

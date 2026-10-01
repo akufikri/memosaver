@@ -77,6 +77,7 @@ export class MemoSaverService {
   memories: MemoryRepository;
   engine: MemoryEngine;
   retriever: MemoryRetriever;
+  private readonly db: Database;
   private readonly projectManager: ProjectManager;
   private readonly contextBuilder: ContextBuilder;
   private readonly logger: Logger;
@@ -85,13 +86,17 @@ export class MemoSaverService {
   constructor(db: Database, engine: MemoryEngine, config: MemoSaverConfig, logger: Logger, contextBuilder?: ContextBuilder) {
     this.logger = logger;
     this.configConfig = config;
+    this.db = db;
     this.projects = new ProjectRepository(db);
     this.sessions = new SessionRepository(db);
     this.checkpoints = new CheckpointRepository(db);
     this.memories = new MemoryRepository(db);
     this.projectManager = new ProjectManager(this.projects);
     this.engine = engine;
-    this.retriever = new MemoryRetriever(this.memories);
+    this.retriever = new MemoryRetriever(this.memories, {
+      importanceWeight: config.search.importance_weight,
+      hybrid: config.search.hybrid
+    });
     this.contextBuilder = contextBuilder ?? new ContextBuilder();
   }
 
@@ -182,7 +187,7 @@ export class MemoSaverService {
       completed: input.completed ?? null,
       pending: input.pending ?? null,
       blockers: input.blockers ?? null,
-      next_action: input.next_action ?? null
+      next_action: input.next_action ?? session.next_action ?? null
     });
 
     this.engine.save({
@@ -309,31 +314,54 @@ export class MemoSaverService {
     if (input.project?.path) {
       this.ensureProjectByPath(input.project.path);
     }
+
     const importedIds: string[] = [];
     let skipped = 0;
-    for (const m of input.memories) {
-      if (!m || !m.project_id || !m.content) {
-        skipped += 1;
-        continue;
+
+    // One transaction: a single bad row must not leave a partial import behind.
+    this.db.transaction(() => {
+      for (const m of input.memories ?? []) {
+        if (!m || !m.project_id || !m.content) {
+          skipped += 1;
+          continue;
+        }
+        const type: MemoryType = VALID_MEMORY_TYPES.has((m.type ?? 'FACT') as MemoryType)
+          ? (m.type as MemoryType)
+          : 'FACT';
+
+        let projectId = m.project_id;
+        if (this.projects.get(projectId) == null) {
+          if (!input.project?.path) {
+            // No way to recreate the project locally: skip instead of violating
+            // the project_id foreign key and aborting the whole import.
+            skipped += 1;
+            continue;
+          }
+          projectId = this.ensureProjectByPath(input.project.path).id;
+        }
+
+        // Session ids are machine-local; keep the original id in metadata and
+        // store the memory unscoped when the session does not exist here.
+        const metadata: Record<string, unknown> = { ...(m.metadata ?? {}) };
+        let sessionId = m.session_id ?? undefined;
+        if (sessionId != null && this.sessions.get(sessionId) == null) {
+          metadata['imported_session_id'] = sessionId;
+          sessionId = undefined;
+        }
+
+        const saved = this.engine.save({
+          projectId,
+          sessionId,
+          type,
+          content: m.content,
+          importance: m.importance,
+          metadata
+        });
+        if (saved) importedIds.push(saved.id);
+        else skipped += 1;
       }
-      const type: MemoryType = VALID_MEMORY_TYPES.has((m.type ?? 'FACT') as MemoryType)
-        ? (m.type as MemoryType)
-        : 'FACT';
-      let projectId = m.project_id;
-      if (this.projects.get(projectId) == null && input.project?.path) {
-        projectId = this.ensureProjectByPath(input.project.path).id;
-      }
-      const saved = this.engine.save({
-        projectId,
-        sessionId: m.session_id,
-        type,
-        content: m.content,
-        importance: m.importance,
-        metadata: m.metadata
-      });
-      if (saved) importedIds.push(saved.id);
-      else skipped += 1;
-    }
+    });
+
     return { imported: importedIds.length, skipped, ids: importedIds };
   }
 

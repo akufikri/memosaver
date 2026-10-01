@@ -35,9 +35,25 @@ export function registerMemoryCommands(program: Command, getApp: () => AppCore):
       const app = getApp();
       const pid =
         opts.projectId ?? (opts.project ? app.service.getProjectByPath(opts.project)?.id : undefined);
+      if (opts.project && !pid) {
+        exitError(`No project found for path: ${opts.project}`);
+        return;
+      }
       const limit = Number(opts.limit);
+      if (!Number.isInteger(limit) || limit < 1) {
+        exitError(`--limit must be a positive integer, got: ${opts.limit}`);
+        return;
+      }
       const type: MemoryType | undefined = opts.type && isMemoryType(opts.type) ? opts.type : undefined;
+      if (opts.type && !type) {
+        exitError(`Unknown memory type: ${opts.type}`);
+        return;
+      }
       const minImportance = opts.minImportance != null ? Number(opts.minImportance) : undefined;
+      if (minImportance != null && (!Number.isFinite(minImportance) || minImportance < 0 || minImportance > 1)) {
+        exitError(`--min-importance must be between 0 and 1, got: ${opts.minImportance}`);
+        return;
+      }
 
       if (action === 'list') {
         printMemories(
@@ -51,9 +67,8 @@ export function registerMemoryCommands(program: Command, getApp: () => AppCore):
           exitError('search requires a query: memosaver memory search "authentication"');
           return;
         }
-        const cleaned = query.replace(/"/g, '');
         if (opts.hybrid) {
-          const results = app.service.searchHybrid(cleaned, {
+          const results = app.service.searchHybrid(query, {
             project_id: pid,
             session_id: opts.session,
             type,
@@ -68,7 +83,7 @@ export function registerMemoryCommands(program: Command, getApp: () => AppCore):
           }
           return;
         }
-        const results = app.service.retriever.search(cleaned, {
+        const results = app.service.retriever.search(query, {
           project_id: pid,
           session_id: opts.session,
           type,
@@ -171,8 +186,12 @@ export function registerMemoryCommands(program: Command, getApp: () => AppCore):
           exitError(`cannot parse ${file}: ${(err as Error).message}`);
           return;
         }
-        const result = app.service.importMemories(doc as Parameters<AppCore['service']['importMemories']>[0]);
-        console.log(`Imported ${result.imported} memories (${result.skipped} skipped).`);
+        try {
+          const result = app.service.importMemories(doc as Parameters<AppCore['service']['importMemories']>[0]);
+          console.log(`Imported ${result.imported} memories (${result.skipped} skipped).`);
+        } catch (err) {
+          exitError(`import failed: ${(err as Error).message}`);
+        }
         return;
       }
 

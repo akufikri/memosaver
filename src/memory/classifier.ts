@@ -57,7 +57,7 @@ const RULES: { type: MemoryType; confidence: number; patterns: RegExp[] }[] = [
   {
     type: 'ERROR',
     confidence: 0.9,
-    patterns: [/failed/i, /error:/i, /exception/i, /\bbug\b/i, /not working/i, /crash/i, /cannot|cant\[/i]
+    patterns: [/failed/i, /error:/i, /exception/i, /\bbug\b/i, /not working/i, /crash/i, /cannot|can'?t\b/i]
   },
   {
     type: 'PROGRESS',
@@ -85,19 +85,7 @@ const RULES: { type: MemoryType; confidence: number; patterns: RegExp[] }[] = [
       /should (implement|add|create)/i
     ]
   },
-  {
-    type: 'PROGRESS',
-    confidence: 0.8,
-    patterns: [
-      /^completed/i,
-      /\bdone\b/i,
-      /\bfinished/i,
-      /\bimplemented\b/i,
-      /works now/i,
-      /current state/i,
-      /\bprogress/i
-    ]
-  },
+
   {
     type: 'PREFERENCE',
     confidence: 0.8,

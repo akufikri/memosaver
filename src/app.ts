@@ -42,7 +42,10 @@ export function createApp(): AppCore {
     maxContentLength: config.memory.max_content_length,
     bufferSize: config.memory.buffer_size,
     debounceMs: config.memory.debounce_ms
-  }, composeExtractor(ruleBased, config.memory.llm));
+  }, composeExtractor(ruleBased, config.memory.llm, {
+    minImportance: config.memory.min_importance,
+    maxContentLength: config.memory.max_content_length
+  }), logger);
 
   const service = new MemoSaverService(db, engine, config, logger);
   logger.info('memosaver ready', {

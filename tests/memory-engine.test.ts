@@ -71,6 +71,30 @@ describe('memory engine', () => {
     expect(result.captured).toBe(1);
   });
 
+  it('keeps the session id on captured and buffered activity', async () => {
+    const app = createTestApp({ minImportance: 0.3 });
+    const { project, session } = app.service.startSession(PROJECT, 'tester');
+
+    const captured = await app.engine.capture(
+      project.id,
+      'We decided to store refresh tokens in the session table.',
+      undefined,
+      session.id
+    );
+    expect(captured.memories[0]!.session_id).toBe(session.id);
+
+    app.engine.bufferEvent(project.id, {
+      text: 'The build pipeline runs migrations first.',
+      session_id: session.id,
+      timestamp: Date.now()
+    });
+    const flushed = await app.engine.flushBuffer(project.id);
+    expect(flushed.memories[0]!.session_id).toBe(session.id);
+
+    const scoped = app.service.listMemories({ project_id: project.id, session_id: session.id });
+    expect(scoped.length).toBe(2);
+  });
+
   it('buffers events until flush', async () => {
     const app = createTestApp();
     const { project } = app.service.startSession(PROJECT, 'tester');

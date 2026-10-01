@@ -28,7 +28,11 @@ function optionalProjectId(
 ): string | undefined {
   if (args.project_id) return args.project_id;
   if (args.project_path && args.project_path.length > 0) {
-    return service.getProjectByPath(args.project_path)?.id;
+    const project = service.getProjectByPath(args.project_path);
+    // Never silently drop the filter: that would leak results from every other
+    // project when the caller asked for one specific path.
+    if (!project) throw new NotFoundError(`project not found for path: ${args.project_path}`);
+    return project.id;
   }
   return undefined;
 }

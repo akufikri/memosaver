@@ -1,12 +1,17 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(__dirname, '../dist/mcp/entry.js');
-const home = process.env.MEMOSAVER_ACCEPT_HOME ?? '/tmp/memosaver-acceptance';
-const projectPath = '/tmp/memosaver-acceptance/project';
+// Fresh home per run: reusing one home makes the "first session has no resume"
+// assertion fail on the second run. Set MEMOSAVER_ACCEPT_HOME to opt into a
+// persistent sandbox (existing data is never deleted).
+const home = process.env.MEMOSAVER_ACCEPT_HOME ?? mkdtempSync(join(tmpdir(), 'memosaver-accept-'));
+const projectPath = join(home, 'project');
 
 function assert(cond, msg) {
   if (!cond) {

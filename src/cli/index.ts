@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { createApp, type AppCore } from '../app.js';
+import { VERSION } from '../version.js';
 import { registerDoctorCommand } from './commands/doctor.js';
 import { registerInstallCommand } from './commands/install.js';
 import { registerMemoryCommands } from './commands/memory.js';
@@ -21,7 +22,7 @@ export function run(): void {
   program
     .name('memosaver')
     .description('Local-first persistent memory and session continuity for AI agents')
-    .version('0.1.0');
+    .version(VERSION);
 
   registerStatusCommand(program, getApp);
   registerProjectCommands(program, getApp);
