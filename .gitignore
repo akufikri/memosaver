@@ -29,7 +29,9 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Ideas / internal planning (keep out of public repo)
-docs/
+# Internal planning (keep out of public repo)
+# docs/*.md are published product documentation; the PRD/TRD stay private.
+docs/memosaver-prd.md
+docs/memosaver-trd.md
 IMPLEMENTATION_PLAN.md
 IMPLEMENTATION_STATUS.md
